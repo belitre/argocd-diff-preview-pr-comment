@@ -1,7 +1,7 @@
 .PHONY: build build-cross test fmt lint coverage clean help tidy all install-semantic-release package dist release release-dry-run
 
 # Go parameters
-GOCMD=/usr/local/go/bin/go
+GOCMD=go
 GOBUILD=$(GOCMD) build
 GOTEST=$(GOCMD) test
 GOFMT=$(GOCMD) fmt
