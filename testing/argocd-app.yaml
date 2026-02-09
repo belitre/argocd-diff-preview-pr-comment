@@ -16,6 +16,13 @@ spec:
           domain: argocd.example.com
         
         server:
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
           service:
             type: LoadBalancer
           
