@@ -1,23 +1,20 @@
 package github
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/belitre/argocd-diff-preview-pr-comment/pkg/logger"
+	"github.com/google/go-github/v69/github"
 )
 
 // Client represents a GitHub API client
 type Client struct {
-	token      string
-	httpClient *http.Client
-	baseURL    string
+	client *github.Client
 }
 
 // Config holds configuration for GitHub client
@@ -31,31 +28,19 @@ type Config struct {
 
 // NewClient creates a new GitHub client
 func NewClient(config Config) *Client {
-	return &Client{
-		token:   config.Token,
-		baseURL: "https://api.github.com",
-		httpClient: &http.Client{
-			Timeout: config.RequestTimeout,
-		},
+	httpClient := &http.Client{
+		Timeout: config.RequestTimeout,
 	}
-}
 
-// CommentRequest represents a comment to be posted
-type CommentRequest struct {
-	Body string `json:"body"`
-}
-
-// RateLimitInfo contains GitHub rate limit information
-type RateLimitInfo struct {
-	Remaining int
-	Reset     time.Time
+	return &Client{
+		client: github.NewClient(httpClient).WithAuthToken(config.Token),
+	}
 }
 
 // PostPRComment posts a comment to a GitHub PR with retry logic
 func (c *Client) PostPRComment(owner, repo string, prNumber int, comment string, config Config, dryRun bool) error {
 	log := logger.GetLogger()
-
-	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/comments", c.baseURL, owner, repo, prNumber)
+	ctx := context.Background()
 
 	if dryRun {
 		log.Infof("[DRY RUN] Would post comment to PR #%d in %s/%s", prNumber, owner, repo)
@@ -73,104 +58,43 @@ func (c *Client) PostPRComment(owner, repo string, prNumber int, comment string,
 			time.Sleep(delay)
 		}
 
-		err := c.doPostComment(url, comment)
-		if err == nil {
-			log.Infof("Successfully posted comment to PR #%d", prNumber)
-			return nil
+		issueComment := &github.IssueComment{
+			Body: github.String(comment),
 		}
 
-		lastErr = err
+		_, resp, err := c.client.Issues.CreateComment(ctx, owner, repo, prNumber, issueComment)
+		if err != nil {
+			lastErr = err
 
-		// Check if it's a rate limit error
-		if rateLimitErr, ok := err.(*RateLimitError); ok {
-			waitTime := time.Until(rateLimitErr.ResetTime)
-			if waitTime > 0 {
-				log.Warnf("Rate limited. Waiting %v until reset at %v", waitTime, rateLimitErr.ResetTime)
-				time.Sleep(waitTime + time.Second) // Add 1 second buffer
-				continue
+			// Check if it's a rate limit error
+			if resp != nil && (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests) {
+				if resp.Rate.Remaining == 0 {
+					waitTime := time.Until(resp.Rate.Reset.Time)
+					if waitTime > 0 {
+						log.Warnf("Rate limited. Waiting %v until reset at %v", waitTime, resp.Rate.Reset.Time)
+						time.Sleep(waitTime + time.Second) // Add 1 second buffer
+						continue
+					}
+				}
 			}
+
+			// For other errors, only retry if we haven't exhausted attempts
+			if attempt < config.MaxRetries {
+				log.Warnf("Failed to post comment: %v", err)
+			}
+			continue
 		}
 
-		// For other errors, only retry if we haven't exhausted attempts
-		if attempt < config.MaxRetries {
-			log.Warnf("Failed to post comment: %v", err)
+		// Success - log rate limit info for monitoring
+		if resp != nil && resp.Rate.Remaining >= 0 {
+			log.Debugf("Rate limit remaining: %d, resets at: %v", resp.Rate.Remaining, resp.Rate.Reset.Time)
 		}
+
+		log.Infof("Successfully posted comment to PR #%d", prNumber)
+		return nil
 	}
 
 	return fmt.Errorf("failed to post comment after %d retries: %w", config.MaxRetries, lastErr)
-}
-
-// doPostComment performs the actual HTTP request to post a comment
-func (c *Client) doPostComment(url, comment string) error {
-	log := logger.GetLogger()
-
-	commentReq := CommentRequest{Body: comment}
-	jsonData, err := json.Marshal(commentReq)
-	if err != nil {
-		return fmt.Errorf("failed to marshal comment: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "token "+c.token)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Check for rate limiting
-	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
-		rateLimitInfo := c.parseRateLimitHeaders(resp)
-		if rateLimitInfo.Remaining == 0 {
-			return &RateLimitError{
-				ResetTime: rateLimitInfo.Reset,
-			}
-		}
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("GitHub API error (status %d): %s", resp.StatusCode, string(body))
-	}
-
-	// Log rate limit info for monitoring
-	rateLimitInfo := c.parseRateLimitHeaders(resp)
-	log.Debugf("Rate limit remaining: %d, resets at: %v", rateLimitInfo.Remaining, rateLimitInfo.Reset)
-
-	return nil
-}
-
-// parseRateLimitHeaders extracts rate limit information from response headers
-func (c *Client) parseRateLimitHeaders(resp *http.Response) RateLimitInfo {
-	info := RateLimitInfo{}
-
-	if remaining := resp.Header.Get("X-RateLimit-Remaining"); remaining != "" {
-		info.Remaining, _ = strconv.Atoi(remaining)
-	}
-
-	if reset := resp.Header.Get("X-RateLimit-Reset"); reset != "" {
-		if timestamp, err := strconv.ParseInt(reset, 10, 64); err == nil {
-			info.Reset = time.Unix(timestamp, 0)
-		}
-	}
-
-	return info
-}
-
-// RateLimitError represents a rate limit error
-type RateLimitError struct {
-	ResetTime time.Time
-}
-
-func (e *RateLimitError) Error() string {
-	return fmt.Sprintf("rate limit exceeded, resets at %v", e.ResetTime)
 }
 
 // ValidatePRReference validates and parses a GitHub PR reference
