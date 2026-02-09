@@ -39,3 +39,4 @@ package-lock.json
 # Testing artifacts
 testing/argocd-diff-preview
 testing/output
+testing/secrets
