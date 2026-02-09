@@ -35,3 +35,7 @@ Thumbs.db
 .version
 node_modules/
 package-lock.json
+
+# Testing artifacts
+testing/argocd-diff-preview
+testing/output
