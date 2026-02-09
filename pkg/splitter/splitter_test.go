@@ -139,19 +139,59 @@ _Stats_:
 			t.Errorf("Result %d: Content length %d doesn't match Size field %d", i, len(result.Content), result.Size)
 		}
 
-		// Check for header in first part
+		// Check for header only in first part
 		if i == 0 {
 			if len(result.Content) < len("## Argo CD Diff Preview") ||
 				result.Content[:len("## Argo CD Diff Preview")] != "## Argo CD Diff Preview" {
 				t.Errorf("Result %d missing header", i)
 			}
+			// First part should have the footer
+			if len(result.Content) < len("_Stats_:") ||
+				result.Content[len(result.Content)-len("**Part 1 of")-20:len(result.Content)-len("**Part 1 of")] != "_Stats_:\n[Applications: 1]\n" {
+				// Footer should appear before the part indicator
+				t.Logf("Result %d content end: %q", i, result.Content[len(result.Content)-100:])
+			}
+		} else {
+			// Subsequent parts should NOT have header
+			if len(result.Content) >= len("## Argo CD Diff Preview") &&
+				result.Content[:len("## Argo CD Diff Preview")] == "## Argo CD Diff Preview" {
+				t.Errorf("Result %d should not have header", i)
+			}
+			// Subsequent parts should NOT have footer (_Stats_)
+			if len(result.Content) > 0 && containsString(result.Content, "_Stats_:") {
+				t.Errorf("Result %d should not have footer (_Stats_:)", i)
+			}
 		}
 
-		// Check for footer in all results (should contain _Stats_)
+		// All parts should have the part indicator "Part X of Y"
+		expectedPartIndicator := fmt.Sprintf("**Part %d of %d**", i+1, len(results))
+		if !containsString(result.Content, expectedPartIndicator) {
+			t.Errorf("Result %d missing part indicator %q", i, expectedPartIndicator)
+		}
+
+		// Verify content is not empty
 		if len(result.Content) < 10 {
 			t.Errorf("Result %d content too short", i)
 		}
 	}
+}
+
+// Helper function to check if string contains substring
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) && 
+		(s == substr || len(s) > len(substr) && 
+			(s[:len(substr)] == substr || 
+			 s[len(s)-len(substr):] == substr ||
+			 findInString(s, substr)))
+}
+
+func findInString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestCountFileSize(t *testing.T) {

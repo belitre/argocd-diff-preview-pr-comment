@@ -82,7 +82,10 @@ func SplitDiffFile(inputPath string, maxLength int) ([]SplitResult, error) {
 	// Use 35 to be extra safe
 	partIndicatorMaxSize := 35
 
-	// Split the content into chunks - reduce maxLength by overhead to ensure final files fit
+	// Split the content into chunks
+	// For the first chunk: maxLength - header - footer - partIndicator
+	// For subsequent chunks: maxLength - partIndicator
+	// We use the more restrictive first chunk size for all chunks to keep logic simple
 	effectiveMaxLength := maxLength - len(header) - len(footer) - partIndicatorMaxSize
 	if effectiveMaxLength < 100 {
 		return nil, fmt.Errorf("max length too small to split file (effective content space: %d bytes)", effectiveMaxLength)
@@ -105,7 +108,14 @@ func SplitDiffFile(inputPath string, maxLength int) ([]SplitResult, error) {
 			partIndicator = fmt.Sprintf("\n\n---\n**Part %d of %d**\n", i+1, totalParts)
 		}
 
-		fileContent := header + chunk + footer + partIndicator
+		var fileContent string
+		if i == 0 {
+			// First part: include header, footer, and part indicator
+			fileContent = header + chunk + footer + partIndicator
+		} else {
+			// Subsequent parts: only chunk content and part indicator
+			fileContent = chunk + partIndicator
+		}
 
 		// Verify size doesn't exceed max length
 		if len(fileContent) > maxLength {

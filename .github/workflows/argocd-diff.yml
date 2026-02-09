@@ -75,5 +75,5 @@ jobs:
           ./build/argocd-diff-preview-pr-comment add \
             --file ../output/diff.md \
             --pr ${{ github.repository }}#${{ github.event.number }} \
-            --max-length 1000 \
-            --log-level info
+            --log-level info \
+            # --max-length 1000 \

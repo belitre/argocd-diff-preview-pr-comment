@@ -310,6 +310,7 @@ argocd-diff-preview-pr-comment/
 
 - [Developer Guidelines](docs/CLAUDE.md) - Code style, testing requirements, and development workflow
 - [Implementation Details](docs/IMPLEMENTATION.md) - GitHub PR comment integration implementation
+- [Test Coverage Summary](docs/TEST_COVERAGE_SUMMARY.md) - Test coverage status and quality improvements
 
 ## Contributing
 
