@@ -178,11 +178,11 @@ _Stats_:
 
 // Helper function to check if string contains substring
 func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		(s == substr || len(s) > len(substr) && 
-			(s[:len(substr)] == substr || 
-			 s[len(s)-len(substr):] == substr ||
-			 findInString(s, substr)))
+	return len(s) >= len(substr) &&
+		(s == substr || len(s) > len(substr) &&
+			(s[:len(substr)] == substr ||
+				s[len(s)-len(substr):] == substr ||
+				findInString(s, substr)))
 }
 
 func findInString(s, substr string) bool {

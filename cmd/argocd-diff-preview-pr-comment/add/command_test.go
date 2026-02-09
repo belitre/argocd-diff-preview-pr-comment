@@ -65,7 +65,7 @@ func TestAddCommand_RequiredFlags(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := NewAddCommand()
 			cmd.SetArgs(tt.args)
-			
+
 			// Disable output during test
 			cmd.SetOut(os.NewFile(0, os.DevNull))
 			cmd.SetErr(os.NewFile(0, os.DevNull))
@@ -109,7 +109,7 @@ func TestAddCommand_FileValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testFile := filepath.Join(tmpDir, "test.md")
-			
+
 			if tt.setupFile {
 				err := os.WriteFile(testFile, []byte(tt.fileContent), 0644)
 				if err != nil {
@@ -285,7 +285,7 @@ func TestAddCommand_TokenValidation(t *testing.T) {
 
 func TestAddCommand_DryRunFlag(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create a simple test file
 	testFile := filepath.Join(tmpDir, "test.md")
 	content := "# Test diff\nSome content that is short"
@@ -317,7 +317,7 @@ func TestAddCommand_DryRunFlag(t *testing.T) {
 
 func TestAddCommand_MaxLengthFlag(t *testing.T) {
 	cmd := NewAddCommand()
-	
+
 	if cmd.Flags().Lookup("max-length") == nil {
 		t.Error("max-length flag not found")
 	}
@@ -335,7 +335,7 @@ func TestAddCommand_MaxLengthFlag(t *testing.T) {
 
 func TestAddCommand_RetryFlags(t *testing.T) {
 	cmd := NewAddCommand()
-	
+
 	flags := []struct {
 		name         string
 		expectedType string
