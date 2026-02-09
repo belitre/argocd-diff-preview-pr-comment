@@ -54,10 +54,11 @@ jobs:
             -e REPO=${{ github.repository }} \
             dagandersen/argocd-diff-preview:v0.1.24
       
-    #   - name: Upload diff artifact
-    #     if: always()
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: argocd-diff
-    #       path: output/
-    #       retention-days: 7
+
+      - name: Post diff as comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          gh pr comment "${PR_NUMBER}" --repo "${REPOSITORY}" --body-file output/diff.md
