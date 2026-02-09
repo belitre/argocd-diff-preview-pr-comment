@@ -19,7 +19,7 @@ A Go CLI application that processes ArgoCD application diffs from [argocd-diff-p
 - 🎯 Configurable log levels (debug, info, warn, error, fatal)
 - 🔧 Built with Go for performance and reliability
 - 📊 Comprehensive test coverage
-- 🏗️ Cross-platform support (Linux, macOS, Windows)
+- 🏗️ Cross-platform support (Linux, macOS)
 
 ## Installation
 
@@ -30,7 +30,6 @@ Download the latest release for your platform from the [releases page](https://g
 Available architectures:
 - Linux (amd64, arm64)
 - macOS (arm64)
-- Windows (amd64)
 
 ### Build from Source
 
