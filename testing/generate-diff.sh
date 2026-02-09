@@ -133,8 +133,8 @@ init_git_repo() {
 # Generate diff using argocd-diff-preview
 generate_diff() {
     local binary_path="${SCRIPT_DIR}/${BINARY_NAME}"
-    local repo_owner="${REPO_OWNER:-your-org}"
-    local repo_name="${REPO_NAME:-your-repo}"
+    local repo_owner="${REPO_OWNER:-belitre}"
+    local repo_name="${REPO_NAME:-argocd-diff-preview-pr-comment}"
 
     # Get current branch as target branch
     local target_branch
@@ -154,9 +154,6 @@ generate_diff() {
     log_info "Target branch: $target_branch (current branch)"
     log_info "Base branch: $base_branch"
     log_info "Max diff length: 999999"
-    log_info ""
-    log_warn "Note: argocd-diff-preview requires a GitHub repository with ArgoCD applications."
-    log_warn "Set environment variables: REPO_OWNER, REPO_NAME, BASE_BRANCH (optional)"
     log_info ""
 
     # Run argocd-diff-preview

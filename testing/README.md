@@ -16,16 +16,17 @@ This directory contains testing resources for generating ArgoCD application diff
 
 ### Generate a Diff from a GitHub Repository
 
-Set environment variables to specify your repository:
+Simply run the script (it uses the repository defaults):
 
 ```bash
 cd testing
+./generate-diff.sh
+```
 
-# Set your repository information
-export REPO_OWNER="your-github-username"
-export REPO_NAME="your-repository-name"
-export BASE_BRANCH="main"  # Optional: base branch to compare against (default: main)
+Optionally, you can override the base branch:
 
+```bash
+export BASE_BRANCH="develop"  # Optional: base branch to compare against (default: main)
 ./generate-diff.sh
 ```
 
@@ -45,7 +46,7 @@ If you run the script without setting environment variables, it will use default
 ```
 
 Defaults:
-- Repository: `your-org/your-repo`
+- Repository: `belitre/argocd-diff-preview-pr-comment`
 - Target branch: Current git branch (automatically detected)
 - Base branch: `main`
 
