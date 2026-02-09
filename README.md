@@ -1,13 +1,12 @@
 # argocd-diff-preview-pr-comment
 
-[![CI](https://github.com/belitre/argocd-diff-preview-pr-comment/actions/workflows/ci.yml/badge.svg)](https://github.com/belitre/argocd-diff-preview-pr-comment/actions/workflows/ci.yml)
+> **Note**: This project (code and documentation) was created using AI tools (Claude Sonnet 4.5).
+
 [![Release](https://github.com/belitre/argocd-diff-preview-pr-comment/actions/workflows/release.yml/badge.svg)](https://github.com/belitre/argocd-diff-preview-pr-comment/actions/workflows/release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/belitre/argocd-diff-preview-pr-comment)](https://github.com/belitre/argocd-diff-preview-pr-comment/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/belitre/argocd-diff-preview-pr-comment)](go.mod)
 [![Go Report Card](https://goreportcard.com/badge/github.com/belitre/argocd-diff-preview-pr-comment)](https://goreportcard.com/report/github.com/belitre/argocd-diff-preview-pr-comment)
 [![License](https://img.shields.io/github/license/belitre/argocd-diff-preview-pr-comment)](LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/belitre/argocd-diff-preview-pr-comment)](https://github.com/belitre/argocd-diff-preview-pr-comment/issues)
-[![GitHub stars](https://img.shields.io/github/stars/belitre/argocd-diff-preview-pr-comment?style=social)](https://github.com/belitre/argocd-diff-preview-pr-comment/stargazers)
 
 A Go CLI application that processes ArgoCD application diffs from [argocd-diff-preview](https://github.com/dag-andersen/argocd-diff-preview), splits them by application, and posts organized comments on GitHub pull requests. This tool helps teams review ArgoCD changes more effectively by providing clear, application-specific diff summaries directly in PR comments.
 
@@ -54,6 +53,52 @@ make build-cross
 
 ## Usage
 
+### Post Diffs to GitHub Pull Requests
+
+The `add` command posts split ArgoCD diffs as comments to a GitHub PR:
+
+```bash
+# Basic usage with environment variable
+export GITHUB_TOKEN=ghp_your_token_here
+argocd-diff-preview-pr-comment add \
+  --diff-file path/to/diff.txt \
+  --pr-ref owner/repo#123
+
+# Using full GitHub PR URL
+argocd-diff-preview-pr-comment add \
+  --diff-file path/to/diff.txt \
+  --pr-ref https://github.com/owner/repo/pull/123 \
+  --github-token ghp_your_token_here
+
+# Dry-run to preview without posting
+argocd-diff-preview-pr-comment add \
+  --diff-file path/to/diff.txt \
+  --pr-ref owner/repo#123 \
+  --dry-run
+
+# Custom size limit and rate limiting
+argocd-diff-preview-pr-comment add \
+  --diff-file path/to/diff.txt \
+  --pr-ref owner/repo#123 \
+  --max-length 32768 \
+  --max-retries 5 \
+  --retry-delay 3s \
+  --backoff-factor 2.5
+```
+
+### Split Diffs (Analysis Only)
+
+The `split` command analyzes and logs split parts without posting:
+
+```bash
+# Split and analyze a diff file
+argocd-diff-preview-pr-comment split \
+  --diff-file path/to/diff.txt \
+  --max-length 65536
+```
+
+### General Commands
+
 ```bash
 # Show version and help
 argocd-diff-preview-pr-comment --help
@@ -65,11 +110,62 @@ argocd-diff-preview-pr-comment --log-level debug version
 # Available log levels: debug, info, warn, error, fatal
 ```
 
+### Command-line Flags
+
+#### Add Command (Post to GitHub)
+
+- `--diff-file`: Path to the ArgoCD diff file (required)
+- `--pr-ref`: GitHub PR reference in format `owner/repo#123` or full URL (required)
+- `--github-token`: GitHub personal access token (optional if using env vars)
+- `--max-length`: Maximum length of each comment in bytes (default: 65536)
+- `--max-retries`: Maximum number of retry attempts for rate limits (default: 3)
+- `--retry-delay`: Initial delay between retries (default: 2s)
+- `--backoff-factor`: Exponential backoff multiplier (default: 2.0)
+- `--request-timeout`: HTTP request timeout (default: 30s)
+- `--dry-run`: Preview actions without posting comments (default: false)
+- `--log-level`: Log level (debug, info, warn, error, fatal) (default: "info")
+
+#### Split Command (Analysis Only)
+
+- `--diff-file`: Path to the ArgoCD diff file (required)
+- `--max-length`: Maximum length of each split part in bytes (default: 65536)
+- `--log-level`: Log level (debug, info, warn, error, fatal) (default: "info")
+
+### Rate Limiting
+
+The tool automatically handles GitHub API rate limits:
+
+- **Detection**: Monitors `X-RateLimit-Remaining` header
+- **Retry Logic**: Exponential backoff with configurable parameters
+- **Default Behavior**: 3 retries with 2s initial delay and 2.0x backoff factor
+- **Comment Delay**: 500ms delay between posting comments to avoid rate limits
+
+When rate limited, the tool will:
+1. Wait for the time specified in the `X-RateLimit-Reset` header
+2. Retry the request with exponential backoff
+3. Log detailed information about rate limit status
+
+### CI/CD Integration Example
+
+```yaml
+# GitHub Actions example
+- name: Post ArgoCD Diff to PR
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    argocd-diff-preview-pr-comment add \
+      --diff-file argocd-diff.txt \
+      --pr-ref ${{ github.repository }}#${{ github.event.pull_request.number }}
+```
+
 ## Configuration
 
 The application requires the following environment variables:
 
 - `GITHUB_TOKEN`: GitHub Personal Access Token with `repo` scope (for posting PR comments)
+- `GH_TOKEN`: Alternative environment variable for GitHub token (if `GITHUB_TOKEN` is not set)
+
+The GitHub token can also be provided via the `--github-token` flag. If no token is provided through any method, the application will exit with an error.
 
 ## Development
 
@@ -96,7 +192,7 @@ make all           # Run fmt, lint, test, and build-cross
 
 ### Development Workflow
 
-1. Make code changes following the [code style guidelines](CLAUDE.md#code-style)
+1. Make code changes following the [code style guidelines](docs/CLAUDE.md#code-style)
 2. Run `make fmt` to format code
 3. Run `make lint` to check for issues
 4. Run `make test` to verify tests pass
@@ -199,20 +295,28 @@ argocd-diff-preview-pr-comment/
 │       ├── ci.yml                        # CI workflow
 │       └── release.yml                   # Release workflow
 ├── build/                                # Build output directory
+├── docs/                                 # Documentation
+│   ├── CLAUDE.md                         # Developer guidelines
+│   └── IMPLEMENTATION.md                 # GitHub integration details
 ├── Makefile                              # Build automation
 ├── go.mod                                # Go module definition
 ├── go.sum                                # Go module checksums
 ├── .releaserc.json                       # Semantic-release config
 ├── CHANGELOG.md                          # Auto-generated changelog
-├── CLAUDE.md                             # Developer documentation
 └── README.md                             # This file
 ```
+
+## Documentation
+
+- [Developer Guidelines](docs/CLAUDE.md) - Code style, testing requirements, and development workflow
+- [Implementation Details](docs/IMPLEMENTATION.md) - GitHub PR comment integration implementation
+- [Test Coverage Summary](docs/TEST_COVERAGE_SUMMARY.md) - Test coverage status and quality improvements
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Make your changes following the code style guidelines
+3. Make your changes following the [code style guidelines](docs/CLAUDE.md#code-style)
 4. Ensure all tests pass (`make test`)
 5. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/)
 6. Push to your branch (`git push origin feat/amazing-feature`)

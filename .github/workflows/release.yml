@@ -10,6 +10,11 @@ permissions:
   issues: write
   pull-requests: write
 
+
+concurrency:
+  group: release-${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Semantic Release
