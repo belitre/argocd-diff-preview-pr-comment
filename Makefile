@@ -16,7 +16,7 @@ LDFLAGS=-ldflags "-X github.com/belitre/argocd-diff-preview-pr-comment/pkg/versi
 	-X github.com/belitre/argocd-diff-preview-pr-comment/pkg/version.Commit=$(COMMIT)"
 
 # Build targets
-PLATFORMS=linux/amd64 linux/arm64 darwin/arm64 windows/amd64
+PLATFORMS=linux/amd64 linux/arm64 darwin/arm64
 
 help: ## Display this help message
 	@echo "Available targets:"
@@ -30,7 +30,7 @@ build: ## Build application for current platform only
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_PATH)
 	@echo "Build complete! Binary: $(BUILD_DIR)/$(BINARY_NAME)"
 
-build-cross: ## Build application for multiple architectures (Linux-amd64, Linux-arm64, Darwin-arm64, Windows-amd64)
+build-cross: ## Build application for multiple architectures (Linux-amd64, Linux-arm64, Darwin-arm64)
 	@echo "Building for multiple platforms..."
 	@echo "Version: $(VERSION)"
 	@echo "Commit: $(COMMIT)"
@@ -41,9 +41,6 @@ build-cross: ## Build application for multiple architectures (Linux-amd64, Linux
 		platform_dir=$(BUILD_DIR)/$$GOOS-$$GOARCH; \
 		mkdir -p $$platform_dir; \
 		output_name=$$platform_dir/$(BINARY_NAME); \
-		if [ $$GOOS = "windows" ]; then \
-			output_name=$$output_name.exe; \
-		fi; \
 		echo "Building $$output_name..."; \
 		GOOS=$$GOOS GOARCH=$$GOARCH $(GOBUILD) $(LDFLAGS) -o $$output_name $(CMD_PATH); \
 		if [ $$? -ne 0 ]; then \
