@@ -1,3 +1,9 @@
+## [0.0.2](https://github.com/belitre/argocd-diff-preview-pr-comment/compare/v0.0.1...v0.0.2) (2026-02-09)
+
+### Bug Fixes
+
+* testing script ([#3](https://github.com/belitre/argocd-diff-preview-pr-comment/issues/3)) ([321802e](https://github.com/belitre/argocd-diff-preview-pr-comment/commit/321802ef5867a8c5fa6ea175583a13345e8c83b4))
+
 ## [0.0.1](https://github.com/belitre/argocd-diff-preview-pr-comment/compare/v0.0.0...v0.0.1) (2026-02-09)
 
 ### Bug Fixes
