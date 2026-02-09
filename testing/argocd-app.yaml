@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    targetRevision: 7.7.0
+    chart: argo-cd
+    helm:
+      releaseName: argocd
+      values: |
+        global:
+          domain: argocd.example.com
+        
+        server:
+          service:
+            type: LoadBalancer
+          
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            hosts:
+              - argocd.example.com
+            tls:
+              - secretName: argocd-tls
+                hosts:
+                  - argocd.example.com
+        
+        configs:
+          params:
+            server.insecure: true
+          
+          cm:
+            timeout.reconciliation: 180s
+            resource.exclusions: |
+              - apiGroups:
+                - cilium.io
+                kinds:
+                - CiliumIdentity
+                clusters:
+                - "*"
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

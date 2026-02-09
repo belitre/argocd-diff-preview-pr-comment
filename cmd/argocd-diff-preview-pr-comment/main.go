@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/belitre/argocd-diff-preview-pr-comment/cmd/argocd-diff-preview-pr-comment/add"
 	"github.com/belitre/argocd-diff-preview-pr-comment/pkg/logger"
 	"github.com/belitre/argocd-diff-preview-pr-comment/pkg/version"
 	"github.com/spf13/cobra"
@@ -51,6 +52,7 @@ var versionCmd = &cobra.Command{
 func init() {
 	rootCmd.Version = version.GetVersion()
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(add.NewAddCommand())
 
 	// Add global log-level flag
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
