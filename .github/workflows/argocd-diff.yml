@@ -56,7 +56,7 @@ jobs:
             -v $(pwd)/secrets:/secrets \
             -e TARGET_BRANCH=refs/pull/${{ github.event.number }}/merge \
             -e REPO=${{ github.repository }} \
-            -e MAX_DIFF_LENGTH=1000000 \
+            -e MAX_DIFF_LENGTH=300000 \
             dagandersen/argocd-diff-preview:v0.1.24
       
       - name: Setup Go

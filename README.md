@@ -4,9 +4,10 @@
 
 [![Release](https://github.com/belitre/argocd-diff-preview-pr-comment/actions/workflows/release.yml/badge.svg)](https://github.com/belitre/argocd-diff-preview-pr-comment/actions/workflows/release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/belitre/argocd-diff-preview-pr-comment)](https://github.com/belitre/argocd-diff-preview-pr-comment/releases/latest)
+[![License](https://img.shields.io/github/license/belitre/argocd-diff-preview-pr-comment)](LICENSE)
+
 [![Go Version](https://img.shields.io/github/go-mod/go-version/belitre/argocd-diff-preview-pr-comment)](go.mod)
 [![Go Report Card](https://goreportcard.com/badge/github.com/belitre/argocd-diff-preview-pr-comment)](https://goreportcard.com/report/github.com/belitre/argocd-diff-preview-pr-comment)
-[![License](https://img.shields.io/github/license/belitre/argocd-diff-preview-pr-comment)](LICENSE)
 
 A Go CLI application that processes ArgoCD application diffs from [argocd-diff-preview](https://github.com/dag-andersen/argocd-diff-preview), splits them by application, and posts organized comments on GitHub pull requests. This tool helps teams review ArgoCD changes more effectively by providing clear, application-specific diff summaries directly in PR comments.
 
@@ -147,15 +148,83 @@ When rate limited, the tool will:
 
 ### CI/CD Integration Example
 
+### GitHub Actions
+
+Use in your GitHub Actions workflow to automatically post ArgoCD diffs on pull requests:
+
 ```yaml
-# GitHub Actions example
-- name: Post ArgoCD Diff to PR
-  env:
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: |
-    argocd-diff-preview-pr-comment add \
-      --diff-file argocd-diff.txt \
-      --pr-ref ${{ github.repository }}#${{ github.event.pull_request.number }}
+name: ArgoCD Diff Preview
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  argocd-diff:
+    name: Generate and Post ArgoCD Diff
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: pull-request
+      
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+      
+      - name: Prepare secrets for private repos (optional)
+        run: |
+          mkdir -p secrets
+          cat > secrets/secret.yaml << "EOF"
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: private-repo
+            namespace: argocd
+            labels:
+              argocd.argoproj.io/secret-type: repo-creds
+          stringData:
+            url: https://github.com/${{ github.repository }}
+            password: ${{ secrets.GITHUB_TOKEN }}
+            username: not-used
+          EOF
+      
+      - name: Generate Diff
+        run: |
+          docker run \
+            --network=host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v $(pwd)/main:/base-branch \
+            -v $(pwd)/pull-request:/target-branch \
+            -v $(pwd)/output:/output \
+            -v $(pwd)/secrets:/secrets \
+            -e TARGET_BRANCH=refs/pull/${{ github.event.number }}/merge \
+            -e REPO=${{ github.repository }} \
+            -e MAX_DIFF_LENGTH=300000 \
+            dagandersen/argocd-diff-preview:v0.1.24
+      
+      - name: Download argocd-diff-preview-pr-comment
+        run: |
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/belitre/argocd-diff-preview-pr-comment/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+          curl -L -o argocd-diff-preview-pr-comment \
+            "https://github.com/belitre/argocd-diff-preview-pr-comment/releases/download/v${LATEST_VERSION}/argocd-diff-preview-pr-comment-linux-amd64"
+          chmod +x argocd-diff-preview-pr-comment
+      
+      - name: Post diff as comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./argocd-diff-preview-pr-comment add \
+            --file output/diff.md \
+            --pr ${{ github.repository }}#${{ github.event.number }} \
+            --log-level info
 ```
 
 ## Configuration
