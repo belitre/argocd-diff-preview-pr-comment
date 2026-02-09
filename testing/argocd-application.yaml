@@ -4,7 +4,7 @@ metadata:
   name: argocd-test
   namespace: argocd
 spec:
-  project: default
+  project: test
 
   sources:
     # Helm chart source

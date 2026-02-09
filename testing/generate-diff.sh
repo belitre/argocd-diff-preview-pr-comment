@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+set -x  # Enable command tracing
 
 # Script to download argocd-diff-preview and generate diffs for testing
 # Supports Linux and macOS
@@ -115,19 +116,86 @@ download_binary() {
     log_info "Successfully downloaded argocd-diff-preview to $binary_path"
 }
 
-# Initialize git repository if needed
-init_git_repo() {
-    cd "$SCRIPT_DIR" || exit 1
+# Prepare GitHub token secret
+prepare_secret() {
+    local repo_owner="$1"
+    local repo_name="$2"
+    local secrets_dir="${SCRIPT_DIR}/secrets"
+    local secret_file="${secrets_dir}/github-token.yaml"
 
-    if [ ! -d ".git" ]; then
-        log_info "Initializing git repository..."
-        git init
-        git add .
-        git commit -m "Initial commit with ArgoCD application"
-        log_info "Git repository initialized"
-    else
-        log_info "Git repository already exists"
+    # Check if secret already exists
+    if [ -f "$secret_file" ]; then
+        log_info "GitHub token secret already exists at $secret_file"
+        return 0
     fi
+
+    # Secret doesn't exist, check for GITHUB_TOKEN env var
+    if [ -z "${GITHUB_TOKEN:-}" ]; then
+        log_error "GitHub token secret not found and GITHUB_TOKEN environment variable is not set"
+        log_error "Please set GITHUB_TOKEN environment variable or create the secret manually at:"
+        log_error "  $secret_file"
+        exit 1
+    fi
+
+    # Create secrets directory if it doesn't exist
+    mkdir -p "$secrets_dir"
+
+    log_info "Creating GitHub token secret..."
+
+    # Create the secret file
+    cat > "$secret_file" <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+stringData:
+  url: https://github.com/${repo_owner}/${repo_name}
+  password: ${GITHUB_TOKEN}
+  username: not-used
+EOF
+
+    log_info "GitHub token secret created successfully at $secret_file"
+}
+
+# Prepare branch directories
+prepare_branches() {
+    local repo_url="$1"
+    local base_branch="$2"
+    local target_branch="$3"
+
+    local base_dir="${SCRIPT_DIR}/base-branch"
+    local target_dir="${SCRIPT_DIR}/target-branch"
+
+    # Prepare base branch directory
+    log_info "Preparing base branch directory: $base_branch"
+    if [ -d "$base_dir" ]; then
+        log_info "Cleaning existing base-branch directory..."
+        rm -rf "$base_dir"
+    fi
+
+    log_info "Cloning base branch ($base_branch)..."
+    if ! git clone --branch "$base_branch" --depth 1 "$repo_url" "$base_dir"; then
+        log_error "Failed to clone base branch"
+        exit 1
+    fi
+
+    # Prepare target branch directory
+    log_info "Preparing target branch directory: $target_branch"
+    if [ -d "$target_dir" ]; then
+        log_info "Cleaning existing target-branch directory..."
+        rm -rf "$target_dir"
+    fi
+
+    log_info "Cloning target branch ($target_branch)..."
+    if ! git clone --branch "$target_branch" --depth 1 "$repo_url" "$target_dir"; then
+        log_error "Failed to clone target branch"
+        exit 1
+    fi
+
+    log_info "Branch directories prepared successfully"
 }
 
 # Generate diff using argocd-diff-preview
@@ -135,10 +203,11 @@ generate_diff() {
     local binary_path="${SCRIPT_DIR}/${BINARY_NAME}"
     local repo_owner="${REPO_OWNER:-belitre}"
     local repo_name="${REPO_NAME:-argocd-diff-preview-pr-comment}"
+    local repo_url="https://github.com/${repo_owner}/${repo_name}.git"
 
-    # Get current branch as target branch
+    # Get current branch from the parent repository (not the testing folder)
     local target_branch
-    target_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+    target_branch=$(cd "${SCRIPT_DIR}/.." && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 
     # Allow override via TARGET_BRANCH env var if needed
     target_branch="${TARGET_BRANCH:-$target_branch}"
@@ -156,13 +225,24 @@ generate_diff() {
     log_info "Max diff length: 999999"
     log_info ""
 
-    # Run argocd-diff-preview
-    # This tool works with GitHub repositories, not local files
+    # Prepare GitHub token secret
+    prepare_secret "$repo_owner" "$repo_name"
+
+    log_info ""
+
+    # Prepare local branch directories
+    prepare_branches "$repo_url" "$base_branch" "$target_branch"
+
+    log_info ""
+    log_info "Running argocd-diff-preview..."
+    log_info ""
+
+    # Run argocd-diff-preview with local directories
     if ! "$binary_path" \
         --repo "${repo_owner}/${repo_name}" \
-        --target-branch "$target_branch" \
-        --base-branch "$base_branch" \
-        --max-diff-length 999999; then
+        --base-branch "${SCRIPT_DIR}/base-branch" \
+        --target-branch "${SCRIPT_DIR}/target-branch" \
+        --max-diff-length 400 --debug --argocd-chart-version 9.1.9; then
         log_error "Failed to generate diff"
         exit 1
     fi
@@ -183,9 +263,6 @@ main() {
 
     # Download binary if needed
     download_binary "$platform"
-
-    # Initialize git repository if needed (for local testing)
-    init_git_repo
 
     # Generate diff
     generate_diff
