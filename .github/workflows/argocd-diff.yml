@@ -54,11 +54,26 @@ jobs:
             -e REPO=${{ github.repository }} \
             dagandersen/argocd-diff-preview:v0.1.24
       
-
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.7'
+          cache: true
+          cache-dependency-path: pull-request/go.sum
+      
+      - name: Build application
+        working-directory: pull-request
+        run: |
+          make build
+          chmod +x build/argocd-diff-preview-pr-comment
+      
       - name: Post diff as comment
+        working-directory: pull-request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.number }}
-          REPOSITORY: ${{ github.repository }}
         run: |
-          gh pr comment "${PR_NUMBER}" --repo "${REPOSITORY}" --body-file output/diff.md
+          ./build/argocd-diff-preview-pr-comment add \
+            --diff-file ../output/diff.md \
+            --pr-ref ${{ github.repository }}#${{ github.event.number }} \
+            --max-length 1000 \
+            --log-level info
