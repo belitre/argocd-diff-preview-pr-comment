@@ -84,7 +84,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          argocd-diff-preview-pr-comment add \
+          ./argocd-diff-preview-pr-comment add \
             --file ./output/diff.md \
             --pr ${{ github.repository }}#${{ github.event.number }} \
             --log-level info \
