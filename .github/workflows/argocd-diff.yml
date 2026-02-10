@@ -70,8 +70,9 @@ jobs:
         working-directory: pull-request
         run: |
           make build
-          mv build/argocd-diff-preview-pr-comment ./argocd-diff-preview-pr-comment
-          chmod +x ./argocd-diff-preview-pr-comment
+          mv build/argocd-diff-preview-pr-comment .
+          chmod +x argocd-diff-preview-pr-comment
+          sudo mv argocd-diff-preview-pr-comment /usr/local/bin
       
       # - name: Download argocd-diff-preview-pr-comment
       #   run: |
