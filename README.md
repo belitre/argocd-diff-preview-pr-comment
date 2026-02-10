@@ -199,12 +199,13 @@ jobs:
             "https://github.com/belitre/argocd-diff-preview-pr-comment/releases/download/v${LATEST_VERSION}/argocd-diff-preview-pr-comment-${LATEST_VERSION}-linux-amd64.tar.gz"
           tar -xzf argocd-diff-preview-pr-comment.tar.gz
           chmod +x argocd-diff-preview-pr-comment
+          sudo mv argocd-diff-preview-pr-comment /usr/local/bin
       
       - name: Post diff as comment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./argocd-diff-preview-pr-comment add \
+            argocd-diff-preview-pr-comment add \
             --file output/diff.md \
             --pr ${{ github.repository }}#${{ github.event.number }} \
             --log-level info
