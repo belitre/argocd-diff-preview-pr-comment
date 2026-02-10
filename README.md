@@ -195,8 +195,9 @@ jobs:
       - name: Download argocd-diff-preview-pr-comment
         run: |
           LATEST_VERSION=$(curl -s https://api.github.com/repos/belitre/argocd-diff-preview-pr-comment/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
-          curl -L -o argocd-diff-preview-pr-comment \
-            "https://github.com/belitre/argocd-diff-preview-pr-comment/releases/download/v${LATEST_VERSION}/argocd-diff-preview-pr-comment-linux-amd64"
+          curl -L -o argocd-diff-preview-pr-comment.tar.gz \
+            "https://github.com/belitre/argocd-diff-preview-pr-comment/releases/download/v${LATEST_VERSION}/argocd-diff-preview-pr-comment-${LATEST_VERSION}-linux-amd64.tar.gz"
+          tar -xzf argocd-diff-preview-pr-comment.tar.gz
           chmod +x argocd-diff-preview-pr-comment
       
       - name: Post diff as comment
