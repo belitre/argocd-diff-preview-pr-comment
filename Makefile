@@ -95,14 +95,15 @@ install-semantic-release: ## Install semantic-release dependencies
 package: ## Package binaries as tar.gz and zip archives
 	@echo "Packaging binaries..."
 	@echo "Version: $(VERSION)"
+	@rm -f $(BUILD_DIR)/*.tar.gz $(BUILD_DIR)/*.zip
 	@cd $(BUILD_DIR) && \
 	for dir in */; do \
 		if [ -d "$$dir" ]; then \
 			arch_name=$${dir%/}; \
 			archive_name=$(BINARY_NAME)-$(VERSION)-$$arch_name; \
 			echo "Packaging $$arch_name as $$archive_name..."; \
-			tar -czf "$$archive_name.tar.gz" "$$arch_name"; \
-			zip -qr "$$archive_name.zip" "$$arch_name"; \
+			tar -czf "$$archive_name.tar.gz" -C "$$arch_name" $(BINARY_NAME); \
+			cd "$$arch_name" && zip -q "../$$archive_name.zip" $(BINARY_NAME) && cd ..; \
 		fi; \
 	done
 	@echo "Packaging complete! Archives are in $(BUILD_DIR)/"
