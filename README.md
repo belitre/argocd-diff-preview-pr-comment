@@ -86,17 +86,6 @@ argocd-diff-preview-pr-comment add \
   --backoff-factor 2.5
 ```
 
-### Split Diffs (Analysis Only)
-
-The `split` command analyzes and logs split parts without posting:
-
-```bash
-# Split and analyze a diff file
-argocd-diff-preview-pr-comment split \
-  --diff-file path/to/diff.txt \
-  --max-length 65536
-```
-
 ### General Commands
 
 ```bash
@@ -123,12 +112,6 @@ argocd-diff-preview-pr-comment --log-level debug version
 - `--backoff-factor`: Exponential backoff multiplier (default: 2.0)
 - `--request-timeout`: HTTP request timeout (default: 30s)
 - `--dry-run`: Preview actions without posting comments (default: false)
-- `--log-level`: Log level (debug, info, warn, error, fatal) (default: "info")
-
-#### Split Command (Analysis Only)
-
-- `--diff-file`: Path to the ArgoCD diff file (required)
-- `--max-length`: Maximum length of each split part in bytes (default: 65536)
 - `--log-level`: Log level (debug, info, warn, error, fatal) (default: "info")
 
 ### Rate Limiting
@@ -326,6 +309,7 @@ Actions:
 - `feat:` → Minor version bump (new features)
 - `fix:` → Patch version bump (bug fixes)
 - `BREAKING CHANGE:` → Major version bump
+- `major:` → Major version bump
 - Other types: `docs:`, `refactor:`, `perf:`, `test:`, `chore:`, `ci:`
 
 **Example Commits:**
