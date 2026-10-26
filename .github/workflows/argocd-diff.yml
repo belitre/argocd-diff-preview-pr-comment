@@ -62,7 +62,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.7'
+          go-version: '1.27.3'
           cache: true
           cache-dependency-path: pull-request/go.sum
       

@@ -1,6 +1,6 @@
 module github.com/belitre/argocd-diff-preview-pr-comment
 
-go 1.25.7
+go 1.27.3
 
 require (
 	github.com/google/go-github/v69 v69.2.0
