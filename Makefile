@@ -89,7 +89,7 @@ install-semantic-release: ## Install semantic-release dependencies
 		@semantic-release/git@latest \
 		@semantic-release/changelog@latest \
 		@semantic-release/exec@latest \
-		conventional-changelog-conventionalcommits@latest
+		conventional-changelog-conventionalcommits@9.3.1
 	@echo "Semantic-release installed successfully!"
 
 package: ## Package binaries as tar.gz and zip archives
